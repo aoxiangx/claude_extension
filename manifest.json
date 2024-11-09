@@ -1,0 +1,21 @@
+{
+    "manifest_version": 3,
+    "name": "CLAUDE-Content Filter & Highlighter",
+    "version": "1.0",
+    "description": "A simple extension to filter and highlight web content",
+    "permissions": [
+      "activeTab",
+      "storage"
+    ],
+    "action": {
+      "default_popup": "popup.html"
+    },
+    "content_scripts": [{
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }],
+    "icons": {
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  }

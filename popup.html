@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Content Filter Settings</title>
+  <style>
+    body {
+      width: 300px;
+      padding: 10px;
+    }
+    .input-group {
+      margin-bottom: 10px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 8px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <div class="input-group">
+    <label>Words to Filter (comma-separated):</label>
+    <input type="text" id="filterWords" placeholder="Enter words to filter...">
+  </div>
+  <div class="input-group">
+    <label>Highlight Color:</label>
+    <input type="color" id="highlightColor" value="#ffeb3b">
+  </div>
+  <button id="saveSettings">Save Settings</button>
+  <script src="popup.js"></script>
+</body>
+</html>
