@@ -1,0 +1,35 @@
+.text-highlight {
+    border-radius: 2px;
+    padding: 0 1px;
+    margin: 0 1px;
+    cursor: pointer;
+    position: relative;
+}
+
+.highlight-tooltip {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    display: none;
+    z-index: 10000;
+}
+
+.text-highlight:hover .highlight-tooltip {
+    display: block;
+}
+
+.highlight-menu {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    padding: 5px;
+    z-index: 10001;
+}

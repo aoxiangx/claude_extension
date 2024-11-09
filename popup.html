@@ -1,109 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Content Filter Settings</title>
+    <title>Text Highlighter</title>
     <style>
         body {
             width: 300px;
             padding: 15px;
             font-family: Arial, sans-serif;
         }
-        .input-group {
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
             margin-bottom: 15px;
         }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
         }
-        input[type="text"] {
-            width: 100%;
-            padding: 8px;
-            box-sizing: border-box;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+        .color-option.selected {
+            border-color: #333;
         }
-        .filter-mode {
-            margin: 15px 0;
-            padding: 10px;
-            background-color: #f5f5f5;
-            border-radius: 4px;
-        }
-        .radio-group {
+        .controls {
             display: flex;
-            gap: 15px;
-        }
-        .color-picker {
-            margin-top: 10px;
+            flex-direction: column;
+            gap: 10px;
         }
         button {
-            width: 100%;
-            padding: 10px;
-            background-color: #4CAF50;
-            color: white;
+            padding: 8px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
+            background: #4CAF50;
+            color: white;
         }
         button:hover {
-            background-color: #45a049;
+            opacity: 0.9;
         }
-        .stats {
-            margin-top: 15px;
-            padding: 10px;
-            background-color: #f9f9f9;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #666;
-        }
-        #status {
+        .status {
             margin-top: 10px;
             padding: 5px;
             text-align: center;
             display: none;
         }
-        .success {
-            color: #4CAF50;
-        }
-        .error {
-            color: #f44336;
-        }
     </style>
 </head>
 <body>
-    <div class="input-group">
-        <label for="filterWords">Keywords (comma-separated):</label>
-        <input type="text" id="filterWords" placeholder="Enter keywords...">
+    <h3>Highlight Colors</h3>
+    <div class="color-palette" id="colorPalette">
+        <!-- Colors will be added by JavaScript -->
     </div>
-    
-    <div class="filter-mode">
-        <label>Filter Mode:</label>
-        <div class="radio-group">
-            <div>
-                <input type="radio" name="mode" id="highlightMode" value="highlight" checked>
-                <label for="highlightMode">Highlight</label>
-            </div>
-            <div>
-                <input type="radio" name="mode" id="hideMode" value="hide">
-                <label for="hideMode">Hide</label>
-            </div>
-        </div>
-        
-        <div class="color-picker" id="colorPickerContainer">
-            <label for="highlightColor">Highlight Color:</label>
-            <input type="color" id="highlightColor" value="#ffeb3b">
-        </div>
+    <div class="controls">
+        <button id="removeAllBtn">Remove All Highlights</button>
+        <button id="toggleHighlightMode">Start Highlighting (Off)</button>
     </div>
-
-    <button id="saveSettings">Apply Filter</button>
-    
-    <div class="stats">
-        <div id="matchCount">Matches found: 0</div>
-        <div id="processTime">Processing time: 0ms</div>
-    </div>
-    
-    <div id="status"></div>
+    <div id="status" class="status"></div>
+    <script src="popup.js"></script>
 </body>
-<script src="popup.js"></script>
 </html>

@@ -1,86 +1,81 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const filterWordsInput = document.getElementById('filterWords');
-    const highlightModeRadio = document.getElementById('highlightMode');
-    const hideModeRadio = document.getElementById('hideMode');
-    const highlightColorInput = document.getElementById('highlightColor');
-    const colorPickerContainer = document.getElementById('colorPickerContainer');
-    const saveButton = document.getElementById('saveSettings');
-    const statusDiv = document.getElementById('status');
+    // Predefined highlight colors with metadata
+    const highlightColors = [
+        { color: '#ffeb3b', name: 'Yellow' },
+        { color: '#4caf50', name: 'Green' },
+        { color: '#f44336', name: 'Red' },
+        { color: '#2196f3', name: 'Blue' },
+        { color: '#ff9800', name: 'Orange' },
+        { color: '#e91e63', name: 'Pink' },
+        { color: '#9c27b0', name: 'Purple' },
+        { color: '#00bcd4', name: 'Cyan' }
+    ];
 
-    // Handle filter mode change
-    function handleFilterModeChange() {
-        colorPickerContainer.style.display = 
-            highlightModeRadio.checked ? 'block' : 'none';
+    let currentColor = highlightColors[0].color;
+    let isHighlightMode = false;
+
+    // Initialize color palette
+    function initializeColorPalette() {
+        const palette = document.getElementById('colorPalette');
+        highlightColors.forEach(({color, name}) => {
+            const colorOption = document.createElement('div');
+            colorOption.className = 'color-option';
+            colorOption.style.backgroundColor = color;
+            colorOption.title = name;
+            colorOption.addEventListener('click', () => {
+                document.querySelectorAll('.color-option').forEach(opt => 
+                    opt.classList.remove('selected'));
+                colorOption.classList.add('selected');
+                currentColor = color;
+                updateHighlightSettings();
+            });
+            palette.appendChild(colorOption);
+        });
+        // Select first color by default
+        palette.firstChild.classList.add('selected');
     }
 
-    highlightModeRadio.addEventListener('change', handleFilterModeChange);
-    hideModeRadio.addEventListener('change', handleFilterModeChange);
-
-    // Load saved settings
-    chrome.storage.sync.get(
-        ['filterWords', 'highlightColor', 'filterMode'],
-        function(data) {
-            filterWordsInput.value = data.filterWords || '';
-            highlightColorInput.value = data.highlightColor || '#ffeb3b';
-            
-            if (data.filterMode === 'hide') {
-                hideModeRadio.checked = true;
-            } else {
-                highlightModeRadio.checked = true;
+    // Update highlight settings in storage
+    function updateHighlightSettings() {
+        chrome.storage.sync.set({
+            highlightSettings: {
+                currentColor,
+                isHighlightMode
             }
-            
-            handleFilterModeChange();
-        }
-    );
+        });
 
-    // Show status message
-    function showStatus(message, isError = false) {
-        statusDiv.textContent = message;
-        statusDiv.className = isError ? 'error' : 'success';
-        statusDiv.style.display = 'block';
-        setTimeout(() => {
-            statusDiv.style.display = 'none';
-        }, 3000);
-    }
-
-    // Save settings and apply filter
-    saveButton.addEventListener('click', function() {
-        const settings = {
-            filterWords: filterWordsInput.value,
-            highlightColor: highlightColorInput.value,
-            filterMode: document.querySelector('input[name="mode"]:checked').value
-        };
-
-        chrome.storage.sync.set(settings, function() {
-            if (chrome.runtime.lastError) {
-                showStatus('Error saving settings', true);
-                return;
-            }
-
-            // Apply filter to current tab
-            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-                chrome.tabs.sendMessage(
-                    tabs[0].id,
-                    {
-                        action: 'updateSettings',
-                        ...settings
-                    },
-                    function(response) {
-                        if (chrome.runtime.lastError) {
-                            showStatus('Error applying filter', true);
-                            return;
-                        }
-
-                        if (response) {
-                            document.getElementById('matchCount').textContent = 
-                                `Matches found: ${response.matchCount}`;
-                            document.getElementById('processTime').textContent = 
-                                `Processing time: ${response.processTime}ms`;
-                            showStatus('Filter applied successfully');
-                        }
-                    }
-                );
+        // Send settings to content script
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+                action: 'updateHighlightSettings',
+                settings: { currentColor, isHighlightMode }
             });
         });
+    }
+
+    // Toggle highlight mode
+    const toggleBtn = document.getElementById('toggleHighlightMode');
+    toggleBtn.addEventListener('click', function() {
+        isHighlightMode = !isHighlightMode;
+        toggleBtn.textContent = `Start Highlighting (${isHighlightMode ? 'On' : 'Off'})`;
+        updateHighlightSettings();
     });
+
+    // Remove all highlights
+    document.getElementById('removeAllBtn').addEventListener('click', function() {
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            chrome.tabs.sendMessage(tabs[0].id, { action: 'removeAllHighlights' });
+        });
+    });
+
+    // Load saved settings
+    chrome.storage.sync.get('highlightSettings', function(data) {
+        if (data.highlightSettings) {
+            currentColor = data.highlightSettings.currentColor;
+            isHighlightMode = data.highlightSettings.isHighlightMode;
+            toggleBtn.textContent = `Start Highlighting (${isHighlightMode ? 'On' : 'Off'})`;
+        }
+    });
+
+    initializeColorPalette();
 });

@@ -1,17 +1,19 @@
 {
   "manifest_version": 3,
-  "name": "CLAUDE-Content Filter & Highlighter",
+  "name": "CLAUDE-Advanced Text Highlighter",
   "version": "1.0",
-  "description": "Filter and highlight web content",
+  "description": "Highlight text with multiple colors and persistent storage",
   "permissions": [
       "activeTab",
-      "storage"
+      "storage",
+      "scripting"
   ],
   "action": {
       "default_popup": "popup.html"
   },
   "content_scripts": [{
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["content.js"],
+      "css": ["styles.css"]
   }]
 }

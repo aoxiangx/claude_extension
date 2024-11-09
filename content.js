@@ -1,177 +1,243 @@
-class ContentFilter {
+class TextHighlighter {
     constructor() {
         this.settings = {
-            filterWords: '',
-            highlightColor: '#ffeb3b',
-            filterMode: 'highlight'
+            currentColor: '#ffeb3b',
+            isHighlightMode: false
         };
-        this.processedNodes = new WeakSet();
-        this.observer = null;
-        this.processing = false;
+        this.highlights = new Map(); // Store highlights with unique IDs
+        this.isSelecting = false;
+        this.setupEventListeners();
+        this.loadHighlights();
     }
 
-    // Initialize observer for dynamic content
-    initObserver() {
-        if (this.observer) {
-            this.observer.disconnect();
-        }
+    // Generate unique ID for highlights
+    generateHighlightId() {
+        return 'highlight-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    }
 
-        this.observer = new MutationObserver((mutations) => {
-            if (!this.processing) {
-                this.processPage();
-            }
-        });
-
-        this.observer.observe(document.body, {
-            childList: true,
-            subtree: true
+    // Set up event listeners
+    setupEventListeners() {
+        document.addEventListener('mouseup', this.handleSelection.bind(this));
+        document.addEventListener('mousedown', () => {
+            this.isSelecting = true;
         });
     }
 
-    // Create regex pattern from keywords
-    createSearchPattern() {
-        if (!this.settings.filterWords) return null;
-        
-        const words = this.settings.filterWords
-            .split(',')
-            .map(word => word.trim())
-            .filter(word => word.length > 0)
-            .map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-        
-        return words.length > 0 ? new RegExp(`(${words.join('|')})`, 'gi') : null;
-    }
+    // Handle text selection
+    handleSelection() {
+        if (!this.settings.isHighlightMode || !this.isSelecting) return;
+        this.isSelecting = false;
 
-    // Process a single text node
-    processTextNode(textNode, pattern) {
-        if (this.processedNodes.has(textNode)) return 0;
-        
-        const text = textNode.textContent;
-        const matches = text.match(pattern);
-        if (!matches) return 0;
+        const selection = window.getSelection();
+        if (selection.isCollapsed) return;
 
-        const span = document.createElement('span');
-        if (this.settings.filterMode === 'highlight') {
-            // Highlight matches
-            span.innerHTML = text.replace(pattern, 
-                `<span class="extension-highlight" style="background-color: ${this.settings.highlightColor}">$1</span>`
-            );
+        const range = selection.getRangeAt(0);
+        if (this.isWithinHighlight(range)) {
+            // Handle overlapping highlights
+            this.handleOverlappingHighlight(range);
         } else {
-            // Hide matches
-            span.innerHTML = text.replace(pattern, 
-                `<span class="extension-hidden" style="display: none">$1</span>`
-            );
+            this.createHighlight(range);
         }
-
-        textNode.parentNode.replaceChild(span, textNode);
-        this.processedNodes.add(span);
-        return matches.length;
+        selection.removeAllRanges();
     }
 
-    // Remove existing highlights and hidden elements
-    cleanExistingMarkup() {
-        const elements = document.querySelectorAll('.extension-highlight, .extension-hidden');
-        elements.forEach(element => {
-            if (element.classList.contains('extension-highlight') || 
-                element.classList.contains('extension-hidden')) {
-                const parent = element.parentNode;
-                const text = document.createTextNode(element.textContent);
-                parent.replaceChild(text, element);
+    // Check if selection is within existing highlight
+    isWithinHighlight(range) {
+        let node = range.commonAncestorContainer;
+        while (node && node !== document.body) {
+            if (node.classList && node.classList.contains('text-highlight')) {
+                return true;
             }
-        });
+            node = node.parentNode;
+        }
+        return false;
     }
 
-    // Main processing function
-    processPage() {
-        if (this.processing) return { matchCount: 0, processTime: 0 };
-        
-        this.processing = true;
-        const startTime = performance.now();
-        let matchCount = 0;
+    // Handle overlapping highlights
+    handleOverlappingHighlight(range) {
+        const existingHighlight = this.findExistingHighlight(range);
+        if (existingHighlight) {
+            // Split existing highlight if necessary
+            this.splitHighlight(existingHighlight, range);
+        }
+    }
+
+    // Find existing highlight element
+    findExistingHighlight(range) {
+        let node = range.commonAncestorContainer;
+        while (node && node !== document.body) {
+            if (node.classList && node.classList.contains('text-highlight')) {
+                return node;
+            }
+            node = node.parentNode;
+        }
+        return null;
+    }
+
+    // Split existing highlight
+    splitHighlight(highlight, range) {
+        const highlightId = this.generateHighlightId();
+        const span = document.createElement('span');
+        span.className = 'text-highlight';
+        span.style.backgroundColor = this.settings.currentColor;
+        span.dataset.highlightId = highlightId;
+
+        // Create tooltip
+        const tooltip = document.createElement('span');
+        tooltip.className = 'highlight-tooltip';
+        tooltip.textContent = 'Click to remove';
+        span.appendChild(tooltip);
+
+        // Store highlight data
+        this.highlights.set(highlightId, {
+            color: this.settings.currentColor,
+            text: range.toString(),
+            timestamp: Date.now()
+        });
 
         try {
-            // Clean existing markup
-            this.cleanExistingMarkup();
-
-            // Create search pattern
-            const pattern = this.createSearchPattern();
-            if (!pattern) {
-                this.processing = false;
-                return { matchCount: 0, processTime: 0 };
-            }
-
-            // Process text nodes
-            const walker = document.createTreeWalker(
-                document.body,
-                NodeFilter.SHOW_TEXT,
-                {
-                    acceptNode: (node) => {
-                        if (!node.textContent.trim()) return NodeFilter.FILTER_REJECT;
-                        
-                        const parent = node.parentNode;
-                        const isScript = parent.tagName === 'SCRIPT';
-                        const isStyle = parent.tagName === 'STYLE';
-                        const isTextArea = parent.tagName === 'TEXTAREA';
-                        const isInput = parent.tagName === 'INPUT';
-                        const isProcessed = this.processedNodes.has(node);
-                        
-                        if (isScript || isStyle || isTextArea || isInput || isProcessed) {
-                            return NodeFilter.FILTER_REJECT;
-                        }
-                        
-                        return NodeFilter.FILTER_ACCEPT;
-                    }
-                }
-            );
-
-            let node;
-            while (node = walker.nextNode()) {
-                matchCount += this.processTextNode(node, pattern);
-            }
-
-        } catch (error) {
-            console.error('Error processing page:', error);
+            range.surroundContents(span);
+            this.saveHighlights();
+        } catch (e) {
+            console.error('Error creating highlight:', e);
         }
-
-        this.processing = false;
-        return {
-            matchCount,
-            processTime: Math.round(performance.now() - startTime)
-        };
     }
 
-    // Update settings and reprocess page
+    // Create new highlight
+    createHighlight(range) {
+        const highlightId = this.generateHighlightId();
+        const span = document.createElement('span');
+        span.className = 'text-highlight';
+        span.style.backgroundColor = this.settings.currentColor;
+        span.dataset.highlightId = highlightId;
+
+        // Create tooltip
+        const tooltip = document.createElement('span');
+        tooltip.className = 'highlight-tooltip';
+        tooltip.textContent = 'Click to remove';
+        span.appendChild(tooltip);
+
+        // Store highlight data
+        this.highlights.set(highlightId, {
+            color: this.settings.currentColor,
+            text: range.toString(),
+            timestamp: Date.now()
+        });
+
+        try {
+            range.surroundContents(span);
+            this.saveHighlights();
+
+            // Add click handler for removal
+            span.addEventListener('click', (e) => {
+                if (e.target === span) {
+                    this.removeHighlight(highlightId);
+                }
+            });
+        } catch (e) {
+            console.error('Error creating highlight:', e);
+        }
+    }
+
+    // Remove specific highlight
+    removeHighlight(highlightId) {
+        const element = document.querySelector(`[data-highlight-id="${highlightId}"]`);
+        if (element) {
+            const parent = element.parentNode;
+            const textContent = element.textContent;
+            parent.replaceChild(document.createTextNode(textContent), element);
+            this.highlights.delete(highlightId);
+            this.saveHighlights();
+        }
+    }
+
+    // Remove all highlights
+    removeAllHighlights() {
+        document.querySelectorAll('.text-highlight').forEach(element => {
+            const parent = element.parentNode;
+            const textContent = element.textContent;
+            parent.replaceChild(document.createTextNode(textContent), element);
+        });
+        this.highlights.clear();
+        this.saveHighlights();
+    }
+
+    // Save highlights to storage
+    saveHighlights() {
+        const highlightData = Array.from(this.highlights.entries()).map(([id, data]) => ({
+            id,
+            ...data
+        }));
+
+        chrome.storage.sync.set({ highlights: highlightData });
+    }
+
+    // Load highlights from storage
+    loadHighlights() {
+        chrome.storage.sync.get('highlights', (data) => {
+            if (data.highlights) {
+                // Clear existing highlights
+                this.removeAllHighlights();
+
+                // Rebuild highlights map
+                this.highlights.clear();
+                data.highlights.forEach(highlight => {
+                    this.highlights.set(highlight.id, {
+                        color: highlight.color,
+                        text: highlight.text,
+                        timestamp: highlight.timestamp
+                    });
+                });
+
+                // Reapply highlights
+                this.reapplyHighlights();
+            }
+        });
+    }
+
+    // Reapply highlights after page load
+    reapplyHighlights() {
+        const textNodes = document.evaluate(
+            '//text()',
+            document.body,
+            null,
+            XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE,
+            null
+        );
+
+        for (let i = 0; i < textNodes.snapshotLength; i++) {
+            const textNode = textNodes.snapshotItem(i);
+            this.highlights.forEach((data, id) => {
+                if (textNode.textContent.includes(data.text)) {
+                    const range = document.createRange();
+                    range.selectNodeContents(textNode);
+                    const span = document.createElement('span');
+                    span.className = 'text-highlight';
+                    span.style.backgroundColor = data.color;
+                    span.dataset.highlightId = id;
+                    range.surroundContents(span);
+                }
+            });
+        }
+    }
+
+    // Update settings
     updateSettings(newSettings) {
         this.settings = { ...this.settings, ...newSettings };
-        this.processedNodes = new WeakSet();
-        return this.processPage();
     }
 }
 
-// Initialize content filter
-const contentFilter = new ContentFilter();
+// Initialize highlighter
+const highlighter = new TextHighlighter();
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'updateSettings') {
-        const stats = contentFilter.updateSettings({
-            filterWords: request.filterWords,
-            highlightColor: request.highlightColor,
-            filterMode: request.filterMode
-        });
-        sendResponse(stats);
+    switch (request.action) {
+        case 'updateHighlightSettings':
+            highlighter.updateSettings(request.settings);
+            break;
+        case 'removeAllHighlights':
+            highlighter.removeAllHighlights();
+            break;
     }
-    return true;
 });
-
-// Load saved settings and initialize
-chrome.storage.sync.get(
-    ['filterWords', 'highlightColor', 'filterMode'],
-    function(data) {
-        contentFilter.updateSettings({
-            filterWords: data.filterWords || '',
-            highlightColor: data.highlightColor || '#ffeb3b',
-            filterMode: data.filterMode || 'highlight'
-        });
-        contentFilter.initObserver();
-    }
-);
