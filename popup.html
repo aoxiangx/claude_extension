@@ -14,29 +14,51 @@
       width: 100%;
       padding: 5px;
     }
+    .filter-mode {
+      margin: 10px 0;
+    }
     button {
       width: 100%;
       padding: 8px;
+      margin-top: 10px;
       background-color: #4CAF50;
       color: white;
       border: none;
       cursor: pointer;
     }
-    button:hover {
-      background-color: #45a049;
+    .stats {
+      margin-top: 10px;
+      font-size: 0.9em;
+      color: #666;
     }
   </style>
 </head>
 <body>
   <div class="input-group">
-    <label>Words to Filter (comma-separated):</label>
-    <input type="text" id="filterWords" placeholder="Enter words to filter...">
+    <label>Keywords (comma-separated):</label>
+    <input type="text" id="filterWords" placeholder="Enter keywords...">
   </div>
+  
+  <div class="filter-mode">
+    <label>Filter Mode:</label><br>
+    <input type="radio" name="mode" id="highlightMode" value="highlight" checked>
+    <label for="highlightMode">Highlight</label>
+    <input type="radio" name="mode" id="hideMode" value="hide">
+    <label for="hideMode">Hide</label>
+  </div>
+  
   <div class="input-group">
     <label>Highlight Color:</label>
     <input type="color" id="highlightColor" value="#ffeb3b">
   </div>
-  <button id="saveSettings">Save Settings</button>
+
+  <button id="saveSettings">Apply Filter</button>
+  
+  <div class="stats">
+    <div id="matchCount">Matches found: 0</div>
+    <div id="processTime">Processing time: 0ms</div>
+  </div>
+  
   <script src="popup.js"></script>
 </body>
 </html>
