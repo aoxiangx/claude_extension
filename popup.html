@@ -1,64 +1,109 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Content Filter Settings</title>
-  <style>
-    body {
-      width: 300px;
-      padding: 10px;
-    }
-    .input-group {
-      margin-bottom: 10px;
-    }
-    input[type="text"] {
-      width: 100%;
-      padding: 5px;
-    }
-    .filter-mode {
-      margin: 10px 0;
-    }
-    button {
-      width: 100%;
-      padding: 8px;
-      margin-top: 10px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    .stats {
-      margin-top: 10px;
-      font-size: 0.9em;
-      color: #666;
-    }
-  </style>
+    <title>Content Filter Settings</title>
+    <style>
+        body {
+            width: 300px;
+            padding: 15px;
+            font-family: Arial, sans-serif;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .filter-mode {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+        .radio-group {
+            display: flex;
+            gap: 15px;
+        }
+        .color-picker {
+            margin-top: 10px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .stats {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #666;
+        }
+        #status {
+            margin-top: 10px;
+            padding: 5px;
+            text-align: center;
+            display: none;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+    </style>
 </head>
 <body>
-  <div class="input-group">
-    <label>Keywords (comma-separated):</label>
-    <input type="text" id="filterWords" placeholder="Enter keywords...">
-  </div>
-  
-  <div class="filter-mode">
-    <label>Filter Mode:</label><br>
-    <input type="radio" name="mode" id="highlightMode" value="highlight" checked>
-    <label for="highlightMode">Highlight</label>
-    <input type="radio" name="mode" id="hideMode" value="hide">
-    <label for="hideMode">Hide</label>
-  </div>
-  
-  <div class="input-group">
-    <label>Highlight Color:</label>
-    <input type="color" id="highlightColor" value="#ffeb3b">
-  </div>
+    <div class="input-group">
+        <label for="filterWords">Keywords (comma-separated):</label>
+        <input type="text" id="filterWords" placeholder="Enter keywords...">
+    </div>
+    
+    <div class="filter-mode">
+        <label>Filter Mode:</label>
+        <div class="radio-group">
+            <div>
+                <input type="radio" name="mode" id="highlightMode" value="highlight" checked>
+                <label for="highlightMode">Highlight</label>
+            </div>
+            <div>
+                <input type="radio" name="mode" id="hideMode" value="hide">
+                <label for="hideMode">Hide</label>
+            </div>
+        </div>
+        
+        <div class="color-picker" id="colorPickerContainer">
+            <label for="highlightColor">Highlight Color:</label>
+            <input type="color" id="highlightColor" value="#ffeb3b">
+        </div>
+    </div>
 
-  <button id="saveSettings">Apply Filter</button>
-  
-  <div class="stats">
-    <div id="matchCount">Matches found: 0</div>
-    <div id="processTime">Processing time: 0ms</div>
-  </div>
-  
-  <script src="popup.js"></script>
+    <button id="saveSettings">Apply Filter</button>
+    
+    <div class="stats">
+        <div id="matchCount">Matches found: 0</div>
+        <div id="processTime">Processing time: 0ms</div>
+    </div>
+    
+    <div id="status"></div>
 </body>
+<script src="popup.js"></script>
 </html>

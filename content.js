@@ -5,46 +5,20 @@ class ContentFilter {
             highlightColor: '#ffeb3b',
             filterMode: 'highlight'
         };
-        
-        // Performance optimization: Debounce the filtering
-        this.debouncedFilter = this.debounce(this.processPage.bind(this), 150);
-        
-        // Initialize observer for dynamic content
-        this.observer = null;
-        
-        // Keep track of processed nodes
         this.processedNodes = new WeakSet();
+        this.observer = null;
+        this.processing = false;
     }
 
-    // Utility function to debounce frequent calls
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-
-    // Initialize the mutation observer for dynamic content
+    // Initialize observer for dynamic content
     initObserver() {
         if (this.observer) {
             this.observer.disconnect();
         }
 
         this.observer = new MutationObserver((mutations) => {
-            let shouldProcess = false;
-            for (const mutation of mutations) {
-                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                    shouldProcess = true;
-                    break;
-                }
-            }
-            if (shouldProcess) {
-                this.debouncedFilter();
+            if (!this.processing) {
+                this.processPage();
             }
         });
 
@@ -54,124 +28,130 @@ class ContentFilter {
         });
     }
 
-    // Create regex from keywords
-    createSearchRegex() {
+    // Create regex pattern from keywords
+    createSearchPattern() {
         if (!this.settings.filterWords) return null;
         
         const words = this.settings.filterWords
             .split(',')
             .map(word => word.trim())
             .filter(word => word.length > 0)
-            .map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')); // Escape regex special chars
+            .map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
         
         return words.length > 0 ? new RegExp(`(${words.join('|')})`, 'gi') : null;
     }
 
-    // Process a text node
-    processTextNode(node, regex) {
-        const matches = node.textContent.match(regex);
+    // Process a single text node
+    processTextNode(textNode, pattern) {
+        if (this.processedNodes.has(textNode)) return 0;
+        
+        const text = textNode.textContent;
+        const matches = text.match(pattern);
         if (!matches) return 0;
 
         const span = document.createElement('span');
-        
         if (this.settings.filterMode === 'highlight') {
-            span.innerHTML = node.textContent.replace(regex, 
+            // Highlight matches
+            span.innerHTML = text.replace(pattern, 
                 `<span class="extension-highlight" style="background-color: ${this.settings.highlightColor}">$1</span>`
             );
-        } else { // hide mode
-            span.innerHTML = node.textContent.replace(regex,
-                `<span class="extension-hidden" style="display: none;">$1</span>`
+        } else {
+            // Hide matches
+            span.innerHTML = text.replace(pattern, 
+                `<span class="extension-hidden" style="display: none">$1</span>`
             );
         }
-        
-        node.parentNode.replaceChild(span, node);
+
+        textNode.parentNode.replaceChild(span, textNode);
+        this.processedNodes.add(span);
         return matches.length;
+    }
+
+    // Remove existing highlights and hidden elements
+    cleanExistingMarkup() {
+        const elements = document.querySelectorAll('.extension-highlight, .extension-hidden');
+        elements.forEach(element => {
+            if (element.classList.contains('extension-highlight') || 
+                element.classList.contains('extension-hidden')) {
+                const parent = element.parentNode;
+                const text = document.createTextNode(element.textContent);
+                parent.replaceChild(text, element);
+            }
+        });
     }
 
     // Main processing function
     processPage() {
+        if (this.processing) return { matchCount: 0, processTime: 0 };
+        
+        this.processing = true;
         const startTime = performance.now();
         let matchCount = 0;
-        
-        // Remove existing highlights/hidden elements
-        const existingElements = document.querySelectorAll('.extension-highlight, .extension-hidden');
-        existingElements.forEach(el => {
-            const parent = el.parentNode;
-            parent.replaceChild(document.createTextNode(el.textContent), el);
-        });
 
-        const regex = this.createSearchRegex();
-        if (!regex) return { matchCount: 0, processTime: 0 };
+        try {
+            // Clean existing markup
+            this.cleanExistingMarkup();
 
-        // Process text nodes in chunks using TreeWalker
-        const walker = document.createTreeWalker(
-            document.body,
-            NodeFilter.SHOW_TEXT,
-            {
-                acceptNode: function(node) {
-                    // Skip script and style contents
-                    if (node.parentNode.tagName === 'SCRIPT' ||
-                        node.parentNode.tagName === 'STYLE' ||
-                        node.parentNode.tagName === 'TEXTAREA' ||
-                        node.parentNode.className.includes('extension-')) {
-                        return NodeFilter.FILTER_REJECT;
+            // Create search pattern
+            const pattern = this.createSearchPattern();
+            if (!pattern) {
+                this.processing = false;
+                return { matchCount: 0, processTime: 0 };
+            }
+
+            // Process text nodes
+            const walker = document.createTreeWalker(
+                document.body,
+                NodeFilter.SHOW_TEXT,
+                {
+                    acceptNode: (node) => {
+                        if (!node.textContent.trim()) return NodeFilter.FILTER_REJECT;
+                        
+                        const parent = node.parentNode;
+                        const isScript = parent.tagName === 'SCRIPT';
+                        const isStyle = parent.tagName === 'STYLE';
+                        const isTextArea = parent.tagName === 'TEXTAREA';
+                        const isInput = parent.tagName === 'INPUT';
+                        const isProcessed = this.processedNodes.has(node);
+                        
+                        if (isScript || isStyle || isTextArea || isInput || isProcessed) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        
+                        return NodeFilter.FILTER_ACCEPT;
                     }
-                    return NodeFilter.FILTER_ACCEPT;
                 }
-            }
-        );
+            );
 
-        const processChunk = () => {
-            const chunkSize = 50; // Process 50 nodes at a time
-            let nodesToProcess = [];
-            
-            // Collect nodes for processing
-            for (let i = 0; i < chunkSize; i++) {
-                const node = walker.nextNode();
-                if (!node) break;
-                nodesToProcess.push(node);
+            let node;
+            while (node = walker.nextNode()) {
+                matchCount += this.processTextNode(node, pattern);
             }
-            
-            // If no more nodes, we're done
-            if (nodesToProcess.length === 0) {
-                const processTime = Math.round(performance.now() - startTime);
-                chrome.runtime.sendMessage({
-                    action: 'filterComplete',
-                    stats: { matchCount, processTime }
-                });
-                return;
-            }
-            
-            // Process this chunk
-            nodesToProcess.forEach(node => {
-                if (!this.processedNodes.has(node)) {
-                    matchCount += this.processTextNode(node, regex);
-                    this.processedNodes.add(node);
-                }
-            });
-            
-            // Schedule next chunk
-            requestAnimationFrame(processChunk);
+
+        } catch (error) {
+            console.error('Error processing page:', error);
+        }
+
+        this.processing = false;
+        return {
+            matchCount,
+            processTime: Math.round(performance.now() - startTime)
         };
-
-        // Start processing
-        requestAnimationFrame(processChunk);
-        
-        return { matchCount, processTime: Math.round(performance.now() - startTime) };
     }
 
-    // Update settings and reprocess
+    // Update settings and reprocess page
     updateSettings(newSettings) {
         this.settings = { ...this.settings, ...newSettings };
+        this.processedNodes = new WeakSet();
         return this.processPage();
     }
 }
 
-// Initialize the content filter
+// Initialize content filter
 const contentFilter = new ContentFilter();
 
 // Listen for messages from popup
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'updateSettings') {
         const stats = contentFilter.updateSettings({
             filterWords: request.filterWords,
@@ -180,7 +160,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         });
         sendResponse(stats);
     }
-    return true; // Keep message channel open for async response
+    return true;
 });
 
 // Load saved settings and initialize
@@ -192,8 +172,6 @@ chrome.storage.sync.get(
             highlightColor: data.highlightColor || '#ffeb3b',
             filterMode: data.filterMode || 'highlight'
         });
-        
-        // Initialize observer for dynamic content
         contentFilter.initObserver();
     }
 );
