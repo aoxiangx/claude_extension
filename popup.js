@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Color palette configuration
-    const colors = [
+    const DEFAULT_COLORS = [
         { color: '#ffeb3b', name: 'Yellow' },
         { color: '#4caf50', name: 'Green' },
         { color: '#f44336', name: 'Red' },
@@ -11,133 +10,184 @@ document.addEventListener('DOMContentLoaded', function() {
         { color: '#00bcd4', name: 'Cyan' }
     ];
 
-    // Cache DOM elements
-    const elements = {
-        keywords: document.getElementById('keywords'),
-        colorPalette: document.getElementById('colorPalette'),
-        highlightMode: document.getElementById('highlightMode'),
-        caseSensitive: document.getElementById('caseSensitive'),
-        autoHighlight: document.getElementById('autoHighlight'),
-        applyBtn: document.getElementById('applyBtn'),
-        clearBtn: document.getElementById('clearBtn'),
-        status: document.getElementById('status')
-    };
+    class PopupManager {
+        constructor() {
+            this.elements = {
+                keywordsInput: document.getElementById('keywordsInput'),
+                colorPalette: document.getElementById('colorPalette'),
+                highlightToggle: document.getElementById('highlightToggle'),
+                filterToggle: document.getElementById('filterToggle'),
+                filterOptions: document.getElementById('filterOptions'),
+                caseSensitiveToggle: document.getElementById('caseSensitiveToggle'),
+                autoUpdateToggle: document.getElementById('autoUpdateToggle'),
+                applyButton: document.getElementById('applyButton'),
+                clearButton: document.getElementById('clearButton'),
+                statusMessage: document.getElementById('statusMessage')
+            };
 
-    let currentSettings = {
-        keywords: '',
-        selectedColor: colors[0].color,
-        highlightMode: false,
-        caseSensitive: false,
-        autoHighlight: false
-    };
+            this.settings = {
+                keywords: '',
+                selectedColor: DEFAULT_COLORS[0].color,
+                highlightEnabled: false,
+                filterEnabled: false,
+                filterMode: 'hide',
+                caseSensitive: false,
+                autoUpdate: false
+            };
 
-    // Initialize color palette
-    function initializeColorPalette() {
-        colors.forEach(({color, name}) => {
-            const colorOption = document.createElement('div');
-            colorOption.className = 'color-option';
-            colorOption.style.backgroundColor = color;
-            colorOption.title = name;
-            colorOption.dataset.color = color;
-            
-            if (color === currentSettings.selectedColor) {
-                colorOption.classList.add('selected');
-            }
-
-            colorOption.addEventListener('click', () => selectColor(color, colorOption));
-            elements.colorPalette.appendChild(colorOption);
-        });
-    }
-
-    // Color selection handler
-    function selectColor(color, element) {
-        document.querySelectorAll('.color-option').forEach(opt => 
-            opt.classList.remove('selected'));
-        element.classList.add('selected');
-        currentSettings.selectedColor = color;
-    }
-
-    // Show status message
-    function showStatus(message, isError = false) {
-        elements.status.textContent = message;
-        elements.status.className = `status ${isError ? 'error' : 'success'}`;
-        elements.status.style.display = 'block';
-        setTimeout(() => {
-            elements.status.style.display = 'none';
-        }, 3000);
-    }
-
-    // Save settings
-    function saveSettings() {
-        const settings = {
-            keywords: elements.keywords.value,
-            selectedColor: currentSettings.selectedColor,
-            highlightMode: elements.highlightMode.checked,
-            caseSensitive: elements.caseSensitive.checked,
-            autoHighlight: elements.autoHighlight.checked
-        };
-
-        chrome.storage.sync.set({ highlightSettings: settings }, () => {
-            if (chrome.runtime.lastError) {
-                showStatus('Error saving settings', true);
-                return;
-            }
-
-            // Send settings to content script
-            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    action: 'updateSettings',
-                    settings: settings
-                }, () => {
-                    showStatus('Settings applied successfully');
-                });
-            });
-        });
-    }
-
-    // Load saved settings
-    function loadSettings() {
-        chrome.storage.sync.get('highlightSettings', (data) => {
-            if (data.highlightSettings) {
-                currentSettings = data.highlightSettings;
-                
-                // Update UI with saved settings
-                elements.keywords.value = currentSettings.keywords;
-                elements.highlightMode.checked = currentSettings.highlightMode;
-                elements.caseSensitive.checked = currentSettings.caseSensitive;
-                elements.autoHighlight.checked = currentSettings.autoHighlight;
-
-                // Update color palette
-                document.querySelectorAll('.color-option').forEach(opt => {
-                    if (opt.dataset.color === currentSettings.selectedColor) {
-                        opt.classList.add('selected');
-                    }
-                });
-            }
-        });
-    }
-
-    // Event listeners
-    elements.applyBtn.addEventListener('click', saveSettings);
-    
-    elements.clearBtn.addEventListener('click', () => {
-        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            chrome.tabs.sendMessage(tabs[0].id, { action: 'clearHighlights' }, () => {
-                showStatus('All highlights cleared');
-            });
-        });
-    });
-
-    // Initialize
-    initializeColorPalette();
-    loadSettings();
-
-    // Input debouncing for auto-highlight
-    let debounceTimeout;
-    elements.keywords.addEventListener('input', () => {
-        if (elements.autoHighlight.checked) {
-            clearTimeout(debounceTimeout);
-            debounceTimeout = setTimeout(saveSettings, 500);
+            this.initialize();
         }
-    });
+
+        async initialize() {
+            this.initializeColorPalette();
+            this.setupEventListeners();
+            await this.loadSettings();
+            this.updateUI();
+        }
+
+        initializeColorPalette() {
+            DEFAULT_COLORS.forEach(({color, name}) => {
+                const colorOption = document.createElement('div');
+                colorOption.className = 'wcm-color-option';
+                colorOption.style.backgroundColor = color;
+                colorOption.title = name;
+                colorOption.dataset.color = color;
+                
+                if (color === this.settings.selectedColor) {
+                    colorOption.classList.add('selected');
+                }
+
+                colorOption.addEventListener('click', () => this.selectColor(color));
+                this.elements.colorPalette.appendChild(colorOption);
+            });
+        }
+
+        setupEventListeners() {
+            // Toggle handlers
+            this.elements.highlightToggle.addEventListener('change', () => {
+                this.settings.highlightEnabled = this.elements.highlightToggle.checked;
+                if (this.settings.autoUpdate) this.applySettings();
+            });
+
+            this.elements.filterToggle.addEventListener('change', () => {
+                this.settings.filterEnabled = this.elements.filterToggle.checked;
+                this.elements.filterOptions.style.display = 
+                    this.settings.filterEnabled ? 'block' : 'none';
+                if (this.settings.autoUpdate) this.applySettings();
+            });
+
+            // Filter mode handlers
+            document.querySelectorAll('input[name="filterMode"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    this.settings.filterMode = e.target.value;
+                    if (this.settings.autoUpdate) this.applySettings();
+                });
+            });
+
+            // Other option handlers
+            this.elements.caseSensitiveToggle.addEventListener('change', () => {
+                this.settings.caseSensitive = this.elements.caseSensitiveToggle.checked;
+                if (this.settings.autoUpdate) this.applySettings();
+            });
+
+            this.elements.autoUpdateToggle.addEventListener('change', () => {
+                this.settings.autoUpdate = this.elements.autoUpdateToggle.checked;
+            });
+
+            // Keywords input handler with debounce
+            let debounceTimeout;
+            this.elements.keywordsInput.addEventListener('input', () => {
+                this.settings.keywords = this.elements.keywordsInput.value;
+                if (this.settings.autoUpdate) {
+                    clearTimeout(debounceTimeout);
+                    debounceTimeout = setTimeout(() => this.applySettings(), 500);
+                }
+            });
+
+            // Button handlers
+            this.elements.applyButton.addEventListener('click', () => this.applySettings());
+            this.elements.clearButton.addEventListener('click', () => this.clearAll());
+        }
+
+        selectColor(color) {
+            this.settings.selectedColor = color;
+            document.querySelectorAll('.wcm-color-option').forEach(opt => {
+                opt.classList.toggle('selected', opt.dataset.color === color);
+            });
+            if (this.settings.autoUpdate) this.applySettings();
+        }
+
+        async loadSettings() {
+            try {
+                const data = await new Promise(resolve => {
+                    chrome.storage.sync.get('wcmSettings', resolve);
+                });
+                
+                if (data.wcmSettings) {
+                    this.settings = { ...this.settings, ...data.wcmSettings };
+                }
+            } catch (error) {
+                this.showStatus('Error loading settings', true);
+            }
+        }
+
+        updateUI() {
+            this.elements.keywordsInput.value = this.settings.keywords;
+            this.elements.highlightToggle.checked = this.settings.highlightEnabled;
+            this.elements.filterToggle.checked = this.settings.filterEnabled;
+            this.elements.caseSensitiveToggle.checked = this.settings.caseSensitive;
+            this.elements.autoUpdateToggle.checked = this.settings.autoUpdate;
+            
+            document.querySelector(`input[value="${this.settings.filterMode}"]`).checked = true;
+            this.elements.filterOptions.style.display = 
+                this.settings.filterEnabled ? 'block' : 'none';
+
+            document.querySelectorAll('.wcm-color-option').forEach(opt => {
+                opt.classList.toggle('selected', opt.dataset.color === this.settings.selectedColor);
+            });
+        }
+
+        async applySettings() {
+            try {
+                // Save settings
+                await new Promise(resolve => {
+                    chrome.storage.sync.set({ wcmSettings: this.settings }, resolve);
+                });
+
+                // Apply to current tab
+                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                await chrome.tabs.sendMessage(tab.id, {
+                    action: 'updateSettings',
+                    settings: this.settings
+                });
+
+                this.showStatus('Settings applied successfully');
+            } catch (error) {
+                this.showStatus('Error applying settings', true);
+            }
+        }
+
+        async clearAll() {
+            try {
+                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                await chrome.tabs.sendMessage(tab.id, { action: 'clearAll' });
+                this.showStatus('All highlights and filters cleared');
+            } catch (error) {
+                this.showStatus('Error clearing content', true);
+            }
+        }
+
+        showStatus(message, isError = false) {
+            this.elements.statusMessage.textContent = message;
+            this.elements.statusMessage.className = 
+                `wcm-status ${isError ? 'error' : 'success'}`;
+
+            setTimeout(() => {
+                this.elements.statusMessage.className = 'wcm-status';
+            }, 3000);
+        }
+    }
+
+    // Initialize popup
+    const popup = new PopupManager();
 });

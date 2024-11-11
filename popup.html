@@ -1,310 +1,94 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Content Highlighter</title>
-    <style>
-        /* Reset and base styles */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            width: 350px;
-            min-height: 400px;
-            padding: 16px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            color: #333;
-        }
-
-        /* Header styles */
-        .header {
-            padding-bottom: 12px;
-            border-bottom: 1px solid #eee;
-            margin-bottom: 16px;
-        }
-
-        .header h1 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #1a73e8;
-            margin-bottom: 8px;
-        }
-
-        .header p {
-            font-size: 13px;
-            color: #666;
-            line-height: 1.4;
-        }
-
-        /* Form section styles */
-        .section {
-            margin-bottom: 20px;
-        }
-
-        .section-title {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #444;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        /* Input styles */
-        .input-group {
-            margin-bottom: 16px;
-        }
-
-        .input-label {
-            display: block;
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 6px;
-        }
-
-        .text-input {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: border-color 0.2s;
-        }
-
-        .text-input:focus {
-            border-color: #1a73e8;
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
-        }
-
-        /* Color palette styles */
-        .color-palette {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .color-option {
-            width: 100%;
-            aspect-ratio: 1;
-            border-radius: 8px;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: transform 0.2s, border-color 0.2s;
-        }
-
-        .color-option:hover {
-            transform: scale(1.05);
-        }
-
-        .color-option.selected {
-            border-color: #1a73e8;
-            transform: scale(1.05);
-        }
-
-        /* Switch styles */
-        .switch-group {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            padding: 8px;
-            background: #f8f9fa;
-            border-radius: 6px;
-        }
-
-        .switch-label {
-            font-size: 14px;
-            color: #444;
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 24px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .3s;
-            border-radius: 24px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .3s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: #1a73e8;
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(20px);
-        }
-
-        /* Button styles */
-        .button-group {
-            display: flex;
-            gap: 8px;
-            margin-top: 16px;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 10px 16px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s;
-        }
-
-        .btn:active {
-            transform: scale(0.98);
-        }
-
-        .btn-primary {
-            background-color: #1a73e8;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background-color: #1557b0;
-        }
-
-        .btn-secondary {
-            background-color: #f1f3f4;
-            color: #444;
-        }
-
-        .btn-secondary:hover {
-            background-color: #e8eaed;
-        }
-
-        /* Status message styles */
-        .status {
-            margin-top: 16px;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            display: none;
-        }
-
-        .status.success {
-            background-color: #e6f4ea;
-            color: #1e8e3e;
-        }
-
-        .status.error {
-            background-color: #fce8e6;
-            color: #d93025;
-        }
-
-        /* Settings section */
-        .settings-section {
-            margin-top: 20px;
-            padding-top: 16px;
-            border-top: 1px solid #eee;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 400px) {
-            body {
-                width: 100%;
-                min-height: auto;
-                padding: 12px;
-            }
-
-            .color-palette {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-    </style>
+    <title>Web Content Manager</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-    <div class="header">
-        <h1>Content Highlighter</h1>
-        <p>Highlight and filter web content with customizable colors and keywords</p>
+<body class="wcm-popup">
+    <div class="wcm-header">
+        <h1>Web Content Manager</h1>
+        <p>Highlight and filter web content with customizable settings</p>
     </div>
 
-    <div class="section">
-        <div class="section-title">
-            <span>Keywords</span>
-        </div>
-        <div class="input-group">
-            <label class="input-label">Enter keywords (comma-separated)</label>
-            <input type="text" id="keywords" class="text-input" placeholder="Example: important, urgent, todo">
+    <div class="wcm-section">
+        <h2 class="wcm-section-title">Keywords</h2>
+        <div class="wcm-input-group">
+            <label class="wcm-input-label">Enter keywords (comma-separated)</label>
+            <input type="text" id="keywordsInput" class="wcm-text-input" 
+                   placeholder="Example: important, urgent, todo">
         </div>
     </div>
 
-    <div class="section">
-        <div class="section-title">
-            <span>Highlight Colors</span>
-        </div>
-        <div class="color-palette" id="colorPalette">
+    <div class="wcm-section">
+        <h2 class="wcm-section-title">Highlight Colors</h2>
+        <div class="wcm-color-palette" id="colorPalette">
             <!-- Colors will be added by JavaScript -->
         </div>
     </div>
 
-    <div class="section">
-        <div class="section-title">
-            <span>Options</span>
-        </div>
-        <div class="switch-group">
-            <span class="switch-label">Highlight Mode</span>
-            <label class="switch">
-                <input type="checkbox" id="highlightMode">
-                <span class="slider"></span>
+    <div class="wcm-section">
+        <h2 class="wcm-section-title">Mode Settings</h2>
+        <div class="wcm-switch-group">
+            <span class="wcm-switch-label">Enable Highlighting</span>
+            <label class="wcm-switch">
+                <input type="checkbox" id="highlightToggle">
+                <span class="wcm-switch-slider"></span>
             </label>
         </div>
-        <div class="switch-group">
-            <span class="switch-label">Case Sensitive</span>
-            <label class="switch">
-                <input type="checkbox" id="caseSensitive">
-                <span class="slider"></span>
-            </label>
-        </div>
-        <div class="switch-group">
-            <span class="switch-label">Auto-highlight</span>
-            <label class="switch">
-                <input type="checkbox" id="autoHighlight">
-                <span class="slider"></span>
+        <div class="wcm-switch-group">
+            <span class="wcm-switch-label">Enable Filtering</span>
+            <label class="wcm-switch">
+                <input type="checkbox" id="filterToggle">
+                <span class="wcm-switch-slider"></span>
             </label>
         </div>
     </div>
 
-    <div class="button-group">
-        <button id="applyBtn" class="btn btn-primary">Apply Changes</button>
-        <button id="clearBtn" class="btn btn-secondary">Clear All</button>
+    <div class="wcm-section" id="filterOptions" style="display: none;">
+        <h2 class="wcm-section-title">Filter Options</h2>
+        <div class="wcm-input-group">
+            <label class="wcm-input-label">Filter Mode</label>
+            <div class="wcm-switch-group">
+                <span class="wcm-switch-label">Hide Content</span>
+                <label class="wcm-switch">
+                    <input type="radio" name="filterMode" value="hide" checked>
+                    <span class="wcm-switch-slider"></span>
+                </label>
+            </div>
+            <div class="wcm-switch-group">
+                <span class="wcm-switch-label">Blur Content</span>
+                <label class="wcm-switch">
+                    <input type="radio" name="filterMode" value="blur">
+                    <span class="wcm-switch-slider"></span>
+                </label>
+            </div>
+        </div>
     </div>
 
-    <div id="status" class="status"></div>
+    <div class="wcm-section">
+        <h2 class="wcm-section-title">Advanced Options</h2>
+        <div class="wcm-switch-group">
+            <span class="wcm-switch-label">Case Sensitive</span>
+            <label class="wcm-switch">
+                <input type="checkbox" id="caseSensitiveToggle">
+                <span class="wcm-switch-slider"></span>
+            </label>
+        </div>
+        <div class="wcm-switch-group">
+            <span class="wcm-switch-label">Auto-Update</span>
+            <label class="wcm-switch">
+                <input type="checkbox" id="autoUpdateToggle">
+                <span class="wcm-switch-slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <div class="wcm-button-group">
+        <button id="applyButton" class="wcm-button wcm-button-primary">Apply Changes</button>
+        <button id="clearButton" class="wcm-button wcm-button-secondary">Clear All</button>
+    </div>
+
+    <div id="statusMessage" class="wcm-status"></div>
 
     <script src="popup.js"></script>
 </body>

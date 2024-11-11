@@ -1,12 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "CLAUDE-Advanced Text Highlighter",
+  "name": "Web Content Manager Pro",
   "version": "1.0",
-  "description": "Highlight text with multiple colors and persistent storage",
+  "description": "Advanced web content filtering and highlighting tool",
   "permissions": [
       "activeTab",
-      "storage",
-      "scripting"
+      "storage"
   ],
   "action": {
       "default_popup": "popup.html"
@@ -15,5 +14,9 @@
       "matches": ["<all_urls>"],
       "js": ["content.js"],
       "css": ["styles.css"]
-  }]
+  }],
+  "icons": {
+      "48": "icon48.png",
+      "128": "icon128.png"
+  }
 }
